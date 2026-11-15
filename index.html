@@ -1731,7 +1731,9 @@
       const time = (document.getElementById('line-notice-time') && document.getElementById('line-notice-time').value) || '15:30〜18:00';
       const place = placeDetails[selectedPlaceKey] || placeDetails['bunkyo-sp'];
 
-      const liffUrl = 'https://liff.line.me/2011458452-SJBmfAEw';
+      const memberKey = adminMemberKey || WTTS_KEY || '';
+      const liffUrl = 'https://liff.line.me/2011458452-SJBmfAEw' + (memberKey ? '?k=' + memberKey : '');
+      if (!memberKey) showToast('メンバー用の鍵を取得できていないため、鍵なしのリンクになります。管理者として入り直してください', true);
 
       let msg = '🏓【練習案内】\n\n';
       msg += '📅 日時: ' + date + ' ' + time + '\n';
@@ -2648,8 +2650,11 @@
     }
 
     // 管理者になったときに、出欠まで入った名簿を取り直す
+    // LINE案内文のリンクに付ける鍵（管理者のとき、あらかじめ取っておく）
+    let adminMemberKey = '';
     function loadAdminMembers() {
       if (!hasServer() || !admTok()) return;
+      if (!adminMemberKey) google.script.run.withSuccessHandler(k => { if (typeof k === 'string') adminMemberKey = k; }).withFailureHandler(() => {}).getMemberKeyForAdmin(admTok());
       google.script.run
         .withSuccessHandler(members => {
           if (!Array.isArray(members)) return;
