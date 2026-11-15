@@ -1011,7 +1011,10 @@
       <p class="card-title">今日の出欠</p>
       <div id="p-late-warning" style="display:none; margin-bottom:12px; padding:10px 12px; border-radius:var(--radius-sm); background:rgba(239,68,68,0.14); border:2px solid var(--red); color:#ff5a5a; font-size:0.92rem; font-weight:800; line-height:1.5;"></div>
       <p class="hint-text">名前を検索して参加状況を登録してください</p>
-      <input type="text" id="p-member-search" placeholder="名前・ふりがなで検索" oninput="filterPMembers()" oncompositionend="filterPMembers()" onkeyup="filterPMembers()" style="width:100%; margin-bottom:12px;">
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <input type="text" id="p-member-search" placeholder="名前・ふりがなで検索" oninput="filterPMembers()" oncompositionend="filterPMembers()" onkeyup="filterPMembers(event)" style="flex:1; min-width:0; margin:0;">
+        <button type="button" id="p-lookup-btn" class="btn" style="display:none; flex:0 0 auto; padding:0 16px;" onclick="publicLookup()">探す</button>
+      </div>
       <div id="p-members-container" style="max-height:260px; overflow-y:auto;">
         <!-- JS -->
       </div>
@@ -1035,8 +1038,9 @@
 
       <!-- 新規登録 -->
       <button id="p-btn-show-new" class="btn" style="width:100%; margin-top:20px; font-size:0.82rem; color:var(--text-muted); background:transparent; border-style:dashed;" onclick="this.style.display='none'; document.getElementById('p-new-member-section').style.display='block'; document.getElementById('participant-action-area').style.display='none';">
-        + 初めての方・名簿に名前がない方
+        + 初めての方はこちら（新規登録）
       </button>
+      
 
       <div id="p-new-member-section" style="margin-top:14px; display:none; padding-top:14px; border-top:1px solid var(--border);">
         <p class="section-label">新規登録</p>
@@ -1457,6 +1461,43 @@
 
   <script>window.WTTS_API_URL = "https://script.google.com/macros/s/AKfycbynobswf-Xg-_Wbas6bKeE4XTN1yW8iUMOEyzh5Lp2v2y3iMW55_gM-OROwSwecZXjX/exec";</script>
   <script>
+    // メンバー用の鍵（LINEのリンクの ?k=…）と端末ID。鍵がない（看板のQRなど）と、名簿の一覧は見えず、フルネーム照会だけになる
+    const WTTS_KEY = (function () {
+      let k = '';
+      try {
+        const q = new URLSearchParams(location.search).get('k');
+        if (q && /^[A-Za-z0-9]{8,64}$/.test(q)) {
+          try { localStorage.setItem('wttsMemberKey', q); } catch (e) {}
+          k = q;
+          const u = new URL(location.href); u.searchParams.delete('k');
+          try { history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
+        }
+        if (!k) { try { k = localStorage.getItem('wttsMemberKey') || ''; } catch (e) {} }
+      } catch (e) {}
+      return k;
+    })();
+    const WTTS_DEVICE = (function () {
+      let d = '';
+      try { d = localStorage.getItem('wttsDeviceId') || ''; } catch (e) {}
+      if (!d) {
+        d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8);
+        try { localStorage.setItem('wttsDeviceId', d); } catch (e) {}
+      }
+      return d;
+    })();
+    // サーバー関数ごとに、鍵・端末IDを引数の決まった位置に足す
+    function wttsAugmentArgs(name, args) {
+      const a = Array.prototype.slice.call(args);
+      const tok = () => { try { return (typeof admTok === 'function' && admTok()) || null; } catch (e) { return null; } };
+      const pad = (n) => { while (a.length < n) a.push(null); };
+      if (name === 'getMembers') { pad(2); a[2] = WTTS_KEY; }
+      else if (name === 'getMemberState' || name === 'getMemberStats' || name === 'lookupMember') { pad(1); a[1] = WTTS_DEVICE; a[2] = WTTS_KEY; a[3] = tok(); }
+      else if (name === 'getPublishedTeams') { a[0] = WTTS_KEY; a[1] = tok(); }
+      else if (name === 'markAttendance') { pad(3); a[3] = WTTS_DEVICE; a[4] = WTTS_KEY; a[5] = tok(); }
+      else if (name === 'registerGuestAndAttend') { pad(4); a[4] = WTTS_DEVICE; a[5] = WTTS_KEY; a[6] = tok(); }
+      return a;
+    }
+    function isPublicMode() { return !WTTS_KEY && !(typeof admTok === 'function' && admTok()); }
     // GitHub Pages 版：Apps Script の外から開くので、google.script.run の代わりに fetch で呼ぶ（window.WTTS_API_URL がある時だけ）
     if (typeof google === 'undefined' && window.WTTS_API_URL) {
       (function () {
@@ -1467,7 +1508,7 @@
             return (...args) => {
               const ctl = new AbortController();
               const timer = setTimeout(() => ctl.abort(), 30000);
-              fetch(window.WTTS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: name, args }), signal: ctl.signal })
+              fetch(window.WTTS_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: name, args: wttsAugmentArgs(name, args) }), signal: ctl.signal })
                 .then(r => r.json())
                 .then(j => { if (j && j.ok) return { value: j.value }; throw new Error((j && j.error) || '通信に失敗しました'); })
                 .then(
@@ -2526,7 +2567,16 @@
               renderHomeMyCard();
               if (serverInitialView === 'p') openView('participant');   // QRから開いたときは、出欠入力画面へ
               const mine = getSavedMemberName();
-              if (mine) loadMemberState(mine, () => renderHomeMyCard());
+              if (mine && isPublicMode()) {
+                // 鍵なし：保存した名前を、1回だけ照会して自分の行を作る（見つからなければ保存を無視）
+                google.script.run
+                  .withSuccessHandler(r => {
+                    if (r && r.ok && r.member) { globalMembers = [r.member]; loadMemberState(mine, () => renderHomeMyCard()); }
+                    renderHomeMyCard();
+                  })
+                  .withFailureHandler(() => {})
+                  .lookupMember(mine);
+              } else if (mine) loadMemberState(mine, () => renderHomeMyCard());
             });
 
             // チーム情報メタの取得
@@ -2974,7 +3024,8 @@
       const container = document.getElementById('p-members-container');
       container.innerHTML = '';
       
-      if(globalMembers.length === 0) {
+      setupPublicSearchUi();
+      if(globalMembers.length === 0 && !isPublicMode()) {
         container.innerHTML = '<p style="text-align:center; color: var(--text-muted);">名簿データがありません。</p>';
         return;
       }
@@ -2991,7 +3042,9 @@
         container.innerHTML = `
           <div style="text-align:center; color: var(--text-muted); padding: 18px 10px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
             <p style="font-size: 1rem; color: #e2e8f0; font-weight: bold; margin-bottom: 6px;"><svg class="ic"><use href="#i-search"/></svg> 上の検索窓から名前を入力してください</p>
-            <p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">※名簿に登録済みの方は、名字やひらがなを入力すると候補が表示されます。</p>
+            ${isPublicMode()
+              ? '<p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">名簿にある方は「名字 代」（例: 佐藤 70）で探せます。<br><span style="display:block; margin-top:6px; font-size:0.85rem; font-weight:700; color:#facc15;"><svg class="ic"><use href="#i-alert"/></svg> 次回からは、練習の前にLINEで出欠の登録をお願いします。</span></p>'
+              : '<p style="font-size: 0.85rem; color: #94a3b8; margin: 0;">※名簿に登録済みの方は、名字やひらがなを入力すると候補が表示されます。</p>'}
           </div>
         `;
         document.getElementById('participant-action-area').style.display = 'none';
@@ -3021,10 +3074,66 @@
       container.appendChild(btn);
     }
 
-    function filterPMembers() {
+    // 鍵のない人（看板のQRなど）向けの検索窓：名簿の一覧は出さず、フルネーム（ふりがな）での照会だけにする
+    function setupPublicSearchUi() {
+      const pub = isPublicMode();
+      const btn = document.getElementById('p-lookup-btn');
+      const inp = document.getElementById('p-member-search');
+      if (btn) btn.style.display = pub ? 'block' : 'none';
+      
+      if (inp && pub) inp.placeholder = '名字と代（例: 佐藤 70）';
+      const nb = document.getElementById('p-btn-show-new');
+      if (nb && pub) { nb.style.color = 'var(--text)'; nb.style.borderStyle = 'solid'; nb.style.borderColor = 'var(--blue)'; nb.style.fontSize = '0.95rem'; nb.style.fontWeight = '700'; nb.style.padding = '14px'; }
+    }
+    let publicLookupLocked = false;
+    function publicLookup() {
+      const inputEl = document.getElementById('p-member-search');
+      const q = (inputEl ? inputEl.value : '').trim();
+      const container = document.getElementById('p-members-container');
+      if (!q) { showToast('名字と代（例: 佐藤 70）を入力してください', true); return; }
+      if (publicLookupLocked) return;
+      if (!hasServer()) { container.innerHTML = ''; return; }
+      const btn = document.getElementById('p-lookup-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+      const done = () => { if (btn) { btn.disabled = false; btn.textContent = '探す'; } };
+      const showLocked = (msg) => {
+        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p></div>';
+      };
+      google.script.run
+        .withSuccessHandler(r => {
+          done();
+          container.innerHTML = '';
+          if (r && r.ok && r.member) {
+            const exist = (globalMembers || []).find(x => x.name === r.member.name);
+            if (exist) Object.assign(exist, r.member); else globalMembers.push(r.member);
+            renderMemberButton(container, r.member);
+          } else if (r && r.reason === 'locked') {
+            showLocked(r.message);
+          } else {
+            const left = r && typeof r.left === 'number' ? r.left : 0;
+            container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);">'
+              + '<p style="margin:0 0 4px; font-weight:600; color:#fca5a5;">「' + esc(q) + '」は見つかりませんでした</p>'
+              + '<p style="font-size:0.82rem; color:var(--text-muted); margin:0;">' + (r.dup ? '同じ名字・同じ代の人がいます。名字のかわりにフルネームで入力してください。' : '「名字 代」（例: 佐藤 70）、またはフルネーム・ふりがなで入力してください。') + 'あと' + left + '回まちがえると、しばらく使えません。<br>新規の方は下の「+」から登録できます。</p></div>';
+          }
+        })
+        .withFailureHandler(err => {
+          done();
+          const msg = (err && err.message) ? err.message : '照会に失敗しました';
+          if (/3回|集中/.test(msg)) showLocked(msg); else showToast(msg, true);
+        })
+        .lookupMember(q);
+    }
+
+    function filterPMembers(ev) {
       const container = document.getElementById('p-members-container');
       const inputEl = document.getElementById('p-member-search');
       const rawQuery = (inputEl ? inputEl.value : '').trim();
+      if (isPublicMode()) {
+        // 一覧は出さない。Enterで照会（入力中は何も送らない）
+        if (ev && ev.key === 'Enter') publicLookup();
+        else if (!rawQuery) renderParticipantList();
+        return;
+      }
       
       if (!rawQuery) {
         renderParticipantList();
@@ -4886,7 +4995,7 @@
             renderPublishedTeams(teams);
           })
           .withFailureHandler((err) => {
-            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #fca5a5;">エラーが発生しました。<br>もう一度お試しください。</div>';
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #fca5a5;">' + ((err && /メンバー用/.test(err.message || '')) ? esc(err.message) : 'エラーが発生しました。<br>もう一度お試しください。') + '</div>';
           })
           .getPublishedTeams();
       } else {
