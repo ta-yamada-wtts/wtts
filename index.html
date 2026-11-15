@@ -1213,12 +1213,15 @@
         チーム分け
         <span class="card-title-count" id="team-division-attendee-count">対象 0名</span>
       </div>
-      <div class="form-row" style="align-items:center; margin-bottom:12px;">
-        <span style="font-size:0.9rem; white-space:nowrap; color:var(--text-sub);">チーム数:</span>
-        <input type="number" id="num-teams" value="8" min="1" max="10" style="text-align:center; max-width:80px;" onchange="updateLeaderSelects()">
-        <span style="font-size:0.9rem; white-space:nowrap; color:var(--text-sub);">会場の人数:</span>
-        <input type="number" id="head-count" min="0" max="99" placeholder="任意" style="text-align:center; max-width:80px;" oninput="updateHeadCountHint()">
-        <span id="head-count-hint" style="font-size:0.85rem; font-weight:700; color:var(--amber); white-space:nowrap;"></span>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:0.9rem; white-space:nowrap; color:var(--text-sub);">チーム数</span>
+          <input type="number" id="num-teams" value="8" min="1" max="10" style="text-align:center; width:100%; max-width:none;" onchange="updateLeaderSelects()">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:0.9rem; white-space:nowrap; color:var(--text-sub);">会場の人数 <span id="head-count-hint" style="font-size:0.85rem; font-weight:700; color:var(--amber);"></span></span>
+          <input type="number" id="head-count" min="0" max="99" placeholder="任意" style="text-align:center; width:100%; max-width:none;" oninput="updateHeadCountHint()">
+        </label>
       </div>
       <div id="leader-selection-container" style="margin-bottom:12px;">
         <p class="hint-text" style="margin-bottom:6px;">リーダーを事前指定（任意）</p>
