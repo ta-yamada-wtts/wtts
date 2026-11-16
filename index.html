@@ -1475,11 +1475,18 @@
     const WTTS_KEY = (function () {
       let k = '';
       try {
-        const q = new URLSearchParams(location.search).get('k');
+        // LINEのLIFFは、リンクの ?k=… を「liff.state」に包んで渡すことがある（?liff.state=%3Fk%3D…）。両方から読む
+        let q = new URLSearchParams(location.search).get('k');
+        if (!q) {
+          let dec = location.search + location.hash;
+          try { dec = decodeURIComponent(dec); } catch (e) {}
+          const mm = dec.match(/[?&#]k=([A-Za-z0-9]{8,64})/);
+          if (mm) q = mm[1];
+        }
         if (q && /^[A-Za-z0-9]{8,64}$/.test(q)) {
           try { localStorage.setItem('wttsMemberKey', q); } catch (e) {}
           k = q;
-          const u = new URL(location.href); u.searchParams.delete('k');
+          const u = new URL(location.href); u.searchParams.delete('k'); u.searchParams.delete('liff.state');
           try { history.replaceState(null, '', u.pathname + u.search + u.hash); } catch (e) {}
         }
         if (!k) { try { k = localStorage.getItem('wttsMemberKey') || ''; } catch (e) {} }
