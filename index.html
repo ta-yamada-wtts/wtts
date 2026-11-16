@@ -1185,6 +1185,16 @@
       <div id="members-container" class="member-list" style="max-height:380px; overflow-y:auto;"></div>
     </div>
 
+    <!-- 端末のひも付け解除 -->
+    <div class="card" style="padding-bottom:14px;">
+      <div class="card-title" style="margin-bottom:6px;">QRの端末のひも付け解除</div>
+      <p class="hint-text" style="margin-bottom:8px;">QRから使った名前は、最初の端末だけが使えます。機種変更などで本人が使えなくなったときに、その名前を入れて解除します。</p>
+      <div class="form-row">
+        <input type="text" id="bind-release-name" placeholder="名簿の名前（フルネーム）" style="flex:1;">
+        <button class="btn" onclick="releaseBinding()" style="white-space:nowrap;">解除する</button>
+      </div>
+    </div>
+
     <!-- 名簿にいない人の追加 -->
     <div class="card" style="padding-bottom:14px;">
       <div class="card-title" style="cursor:pointer; margin-bottom:0;" onclick="toggleGuestSection()">
@@ -1494,6 +1504,8 @@
       else if (name === 'getMemberState' || name === 'getMemberStats' || name === 'lookupMember') { pad(1); a[1] = WTTS_DEVICE; a[2] = WTTS_KEY; a[3] = tok(); }
       else if (name === 'getPublishedTeams') { a[0] = WTTS_KEY; a[1] = tok(); }
       else if (name === 'markAttendance') { pad(3); a[3] = WTTS_DEVICE; a[4] = WTTS_KEY; a[5] = tok(); }
+      else if (name === 'registerAndAttend') { pad(5); a[5] = WTTS_DEVICE; a[6] = WTTS_KEY; a[7] = tok(); }
+      else if (name === 'registerMember') { pad(4); a[4] = WTTS_DEVICE; a[5] = WTTS_KEY; a[6] = tok(); }
       else if (name === 'registerGuestAndAttend') { pad(4); a[4] = WTTS_DEVICE; a[5] = WTTS_KEY; a[6] = tok(); }
       return a;
     }
@@ -2574,6 +2586,7 @@
                 google.script.run
                   .withSuccessHandler(r => {
                     if (r && r.ok && r.member) { globalMembers = [r.member]; loadMemberState(mine, () => renderHomeMyCard()); }
+                    else if (r && r.reason === 'bound') showLineGuide(r.message);
                     renderHomeMyCard();
                   })
                   .withFailureHandler(() => {})
@@ -3090,6 +3103,23 @@
       const nb = document.getElementById('p-btn-show-new');
       if (nb && pub) { nb.style.color = 'var(--text)'; nb.style.borderStyle = 'solid'; nb.style.borderColor = 'var(--blue)'; nb.style.fontSize = '0.95rem'; nb.style.fontWeight = '700'; nb.style.padding = '14px'; }
     }
+    // うまく使えなかったとき、LINEから登録するよう案内する（画面の中央に出す）
+    function closeLineGuide() { const e = document.getElementById('line-guide-overlay'); if (e) e.remove(); }
+    function showLineGuide(msg) {
+      let el = document.getElementById('line-guide-overlay');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'line-guide-overlay';
+        el.style.cssText = 'position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,0.6);';
+        el.innerHTML = '<div style="max-width:340px; width:100%; padding:20px; border-radius:var(--radius); background:var(--card, #1e293b); border:1px solid rgba(250,204,21,0.5);">'
+          + '<p style="margin:0 0 10px; font-weight:800; color:#facc15;"><svg class="ic"><use href="#i-alert"/></svg> ここからは登録できませんでした</p>'
+          + '<p id="line-guide-msg" style="margin:0 0 12px; font-size:0.88rem; line-height:1.7; color:var(--text);"></p>'
+          + '<p style="margin:0 0 14px; font-size:0.88rem; line-height:1.7; font-weight:700; color:var(--text);">お手数ですが、LINEの練習案内のリンクを開いて、そこから出欠を登録してください。</p>'
+          + '<button type="button" class="btn-primary" style="width:100%; margin:0;" onclick="closeLineGuide()">閉じる</button></div>';
+        document.body.appendChild(el);
+      }
+      document.getElementById('line-guide-msg').textContent = msg || '';
+    }
     let publicLookupLocked = false;
     function publicLookup() {
       const inputEl = document.getElementById('p-member-search');
@@ -3102,7 +3132,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '…'; }
       const done = () => { if (btn) { btn.disabled = false; btn.textContent = '探す'; } };
       const showLocked = (msg) => {
-        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p></div>';
+        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p></div>';
       };
       google.script.run
         .withSuccessHandler(r => {
@@ -3114,11 +3144,13 @@
             renderMemberButton(container, r.member);
           } else if (r && r.reason === 'locked') {
             showLocked(r.message);
+          } else if (r && r.reason === 'bound') {
+            showLocked(r.message);
           } else {
             const left = r && typeof r.left === 'number' ? r.left : 0;
             container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);">'
               + '<p style="margin:0 0 4px; font-weight:600; color:#fca5a5;">「' + esc(q) + '」は見つかりませんでした</p>'
-              + '<p style="font-size:0.82rem; color:var(--text-muted); margin:0;">' + (r.dup ? '同じ名字・同じ代の人がいます。名字のかわりにフルネームで入力してください。' : '「名字 代」（例: さとう 70）、またはフルネーム・ふりがなで入力してください。') + 'あと' + left + '回まちがえると、しばらく使えません。<br>新規の方は下の「+」から登録できます。</p></div>';
+              + '<p style="font-size:0.82rem; color:var(--text-muted); margin:0;">' + (r.dup ? '同じ名字・同じ代の人がいます。名字のかわりにフルネームで入力してください。' : '「名字 代」（例: さとう 70）、またはフルネーム・ふりがなで入力してください。') + 'あと' + left + '回まちがえると、しばらく使えません。<br>新規の方は下の「+」から登録できます。</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p></div>';
           }
         })
         .withFailureHandler(err => {
@@ -3127,6 +3159,16 @@
           if (/3回|集中/.test(msg)) showLocked(msg); else showToast(msg, true);
         })
         .lookupMember(q);
+    }
+
+    function releaseBinding() {
+      const el = document.getElementById('bind-release-name');
+      const name = (el.value || '').trim();
+      if (!name) { showToast('名前を入力してください', true); return; }
+      google.script.run
+        .withSuccessHandler(had => { showToast(had ? name + ' さんのひも付けを解除しました' : name + ' さんは、ひも付けされていませんでした'); el.value = ''; })
+        .withFailureHandler(handleAdminError)
+        .releaseDeviceBinding(admTok(), name);
     }
 
     function filterPMembers(ev) {
@@ -3295,6 +3337,14 @@
               finishSuccess();
             })
             .withFailureHandler((err) => {
+              if (err && /LINE|3回|集中/.test(err.message || '')) {
+                // 別の端末で使われている名前・照会の締め出し：再試行しても通らないので、理由を見せる
+                btnAttend.disabled = false; btnLate.disabled = false; btnCancel.disabled = false;
+                btnAttend.textContent = origAttend; btnLate.textContent = origLate; btnCancel.textContent = origCancel;
+                btnConfirm.disabled = false;
+                showLineGuide(err.message);
+                return;
+              }
               if (!retried) {
                 retried = true;
                 console.warn('Retrying markAttendance...', err);
@@ -3379,7 +3429,8 @@
       const failureHandler = (err) => {
         btn1.disabled = false; btn2.disabled = false;
         btn1.textContent = originalText1; btn2.textContent = originalText2;
-        showToast('登録に失敗しました', true);
+        if (err && err.message && /LINE|3回|集中|すでに名簿/.test(err.message)) showLineGuide(err.message);
+        else showToast('登録に失敗しました', true);
       };
 
       if (hasServer()) {
