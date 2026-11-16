@@ -964,6 +964,19 @@
   </div>
 
   <!-- パスワードモーダル -->
+  <!-- QRの端末のひも付け（運営用） -->
+  <div id="qr-bind-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; padding:16px;" onclick="if(event.target===this)closeQrBindModal()">
+    <div class="modal-box" style="max-width:360px;">
+      <p class="modal-title">QRの端末のひも付け</p>
+      <p class="hint-text" style="margin-bottom:10px;">QRから使った名前は、最初の端末だけが使えます。機種変更などで本人が使えなくなったときに、名簿の名前を入れて解除します。解除すると、次に使った端末にひも付きます。</p>
+      <div class="form-row" style="margin-bottom:12px;">
+        <input type="text" id="bind-release-name" placeholder="名簿の名前（フルネーム）" style="flex:1;">
+        <button class="btn" onclick="releaseBinding()" style="white-space:nowrap;">解除する</button>
+      </div>
+      <button type="button" class="btn" style="width:100%;" onclick="closeQrBindModal()">閉じる</button>
+    </div>
+  </div>
+
   <div id="password-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; padding:16px;">
     <div class="modal-box" style="max-width:360px;">
       <p class="modal-title">まる練 ログイン</p>
@@ -1065,6 +1078,7 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <button class="back-btn" style="margin-bottom:0;" onclick="openView('home')">← トップ</button>
       <div style="display:flex; gap:8px;">
+        <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="openQrBindModal()"><svg class="ic"><use href="#i-qr"/></svg> QR</button>
         <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="startDemoMode()"><svg class="ic"><use href="#i-flask"/></svg> お試し</button>
         <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="refreshAdminData()">更新</button>
       </div>
@@ -1158,16 +1172,6 @@
         <button class="btn" onclick="resetAdminAttendance()" style="padding:10px 12px; font-size:0.82rem; color:#fca5a5; border-color:rgba(239,68,68,0.3); white-space:nowrap;">リセット</button>
       </div>
       <div id="members-container" class="member-list" style="max-height:380px; overflow-y:auto;"></div>
-    </div>
-
-    <!-- 端末のひも付け解除 -->
-    <div class="card" style="padding-bottom:14px;">
-      <div class="card-title" style="margin-bottom:6px;">QRの端末のひも付け解除</div>
-      <p class="hint-text" style="margin-bottom:8px;">QRから使った名前は、最初の端末だけが使えます。機種変更などで本人が使えなくなったときに、その名前を入れて解除します。</p>
-      <div class="form-row">
-        <input type="text" id="bind-release-name" placeholder="名簿の名前（フルネーム）" style="flex:1;">
-        <button class="btn" onclick="releaseBinding()" style="white-space:nowrap;">解除する</button>
-      </div>
     </div>
 
     <!-- 名簿にいない人の追加 -->
@@ -3156,6 +3160,8 @@
         .lookupMember(q);
     }
 
+    function openQrBindModal() { document.getElementById('qr-bind-modal').style.display = 'flex'; setTimeout(() => { const e = document.getElementById('bind-release-name'); if (e) e.focus(); }, 50); }
+    function closeQrBindModal() { document.getElementById('qr-bind-modal').style.display = 'none'; }
     function releaseBinding() {
       const el = document.getElementById('bind-release-name');
       const name = (el.value || '').trim();
