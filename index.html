@@ -1472,6 +1472,10 @@
   <script>window.WTTS_API_URL = "https://script.google.com/macros/s/AKfycbynobswf-Xg-_Wbas6bKeE4XTN1yW8iUMOEyzh5Lp2v2y3iMW55_gM-OROwSwecZXjX/exec";</script>
   <script>
     // メンバー用の鍵（LINEのリンクの ?k=…）と端末ID。鍵がない（看板のQRなど）と、名簿の一覧は見えず、フルネーム照会だけになる
+    // 診断用：画面の版と、開いたときに受け取ったパラメータ名（鍵の値は出さない）
+    const WTTS_BUILD = '20261116b';
+    const WTTS_RECEIVED = (function () { try { return Array.from(new URLSearchParams(location.search).keys()).join(',') || 'なし'; } catch (e) { return '?'; } })();
+    function wttsDiag() { return '診断: 鍵' + (WTTS_KEY ? 'あり' : 'なし') + ' / 版' + WTTS_BUILD + ' / 受信パラメータ: ' + WTTS_RECEIVED; }
     const WTTS_KEY = (function () {
       let k = '';
       try {
@@ -3126,6 +3130,9 @@
         document.body.appendChild(el);
       }
       document.getElementById('line-guide-msg').textContent = msg || '';
+      let dg = document.getElementById('line-guide-diag');
+      if (!dg) { dg = document.createElement('p'); dg.id = 'line-guide-diag'; dg.style.cssText = 'margin:10px 0 0; font-size:0.7rem; color:var(--text-muted); word-break:break-all;'; document.querySelector('#line-guide-overlay > div').appendChild(dg); }
+      dg.textContent = wttsDiag();
     }
     let publicLookupLocked = false;
     function publicLookup() {
@@ -3139,7 +3146,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '…'; }
       const done = () => { if (btn) { btn.disabled = false; btn.textContent = '探す'; } };
       const showLocked = (msg) => {
-        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p></div>';
+        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p><p style="margin:8px 0 0; font-size:0.7rem; color:var(--text-muted); word-break:break-all;">' + esc(wttsDiag()) + '</p></div>';
       };
       google.script.run
         .withSuccessHandler(r => {
