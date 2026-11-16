@@ -1473,13 +1473,15 @@
   <script>
     // メンバー用の鍵（LINEのリンクの ?k=…）と端末ID。鍵がない（看板のQRなど）と、名簿の一覧は見えず、フルネーム照会だけになる
     // 診断用：画面の版と、開いたときに受け取ったパラメータ名（鍵の値は出さない）
-    const WTTS_BUILD = '20261116b';
+    const WTTS_BUILD = '20261116c';
     const WTTS_RECEIVED = (function () { try { return Array.from(new URLSearchParams(location.search).keys()).join(',') || 'なし'; } catch (e) { return '?'; } })();
-    function wttsDiag() { return '診断: 鍵' + (WTTS_KEY ? 'あり' : 'なし') + ' / 版' + WTTS_BUILD + ' / 受信パラメータ: ' + WTTS_RECEIVED; }
-    const WTTS_KEY = (function () {
+    function wttsDiag() { return '診断: 鍵' + (WTTS_KEY ? 'あり' : 'なし') + ' / 版' + WTTS_BUILD + ' / 受信パラメータ: ' + WTTS_RECEIVED + ' / LIFF: ' + WTTS_LIFF; }
+    let WTTS_KEY = '';
+    let WTTS_LIFF = '未使用';
+    // URLの鍵（?k=… または LINEが包んだ liff.state の中）を読んで、端末に保存。なければ保存済みの鍵を使う
+    function wttsAdoptKey() {
       let k = '';
       try {
-        // LINEのLIFFは、リンクの ?k=… を「liff.state」に包んで渡すことがある（?liff.state=%3Fk%3D…）。両方から読む
         let q = new URLSearchParams(location.search).get('k');
         if (!q) {
           let dec = location.search + location.hash;
@@ -1495,8 +1497,30 @@
         }
         if (!k) { try { k = localStorage.getItem('wttsMemberKey') || ''; } catch (e) {} }
       } catch (e) {}
+      WTTS_KEY = k;
       return k;
-    })();
+    }
+    wttsAdoptKey();
+    // LINEの中で開いたのに鍵がないときは、LINE公式のSDKで LIFF のリンクに付いた情報（?k=…）を復元してから、もう一度読む
+    function wttsLiffPrepare() {
+      return new Promise(function (resolve) {
+        if (WTTS_KEY || !/Line\//i.test(navigator.userAgent || '')) { resolve(); return; }
+        let done = false;
+        const finish = function (st) { if (done) return; done = true; WTTS_LIFF = st; try { wttsAdoptKey(); } catch (e) {} resolve(); };
+        setTimeout(function () { finish('時間切れ'); }, 5000);
+        try {
+          const s = document.createElement('script');
+          s.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js';
+          s.onload = function () {
+            try {
+              liff.init({ liffId: '2011458452-SJBmfAEw' }).then(function () { finish('成功'); }).catch(function (e) { finish('失敗:' + ((e && (e.code || e.message)) || '')); });
+            } catch (e) { finish('失敗:' + e.message); }
+          };
+          s.onerror = function () { finish('読込失敗'); };
+          document.head.appendChild(s);
+        } catch (e) { finish('失敗:' + e.message); }
+      });
+    }
     const WTTS_DEVICE = (function () {
       let d = '';
       try { d = localStorage.getItem('wttsDeviceId') || ''; } catch (e) {}
@@ -2547,7 +2571,7 @@
         if (localNotice) renderNextPracticeNotice(localNotice);
       } catch (e) {}
 
-      fetchMembers();
+      wttsLiffPrepare().then(fetchMembers);
     });
 
     function fetchMembers() {
