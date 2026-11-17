@@ -973,19 +973,6 @@
   </div>
 
   <!-- パスワードモーダル -->
-  <!-- QRの端末のひも付け（運営用） -->
-  <div id="qr-bind-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; padding:16px;" onclick="if(event.target===this)closeQrBindModal()">
-    <div class="modal-box" style="max-width:360px;">
-      <p class="modal-title">QRの端末のひも付け</p>
-      <p class="hint-text" style="margin-bottom:10px;">QRを読み込んで「別の端末で使われています。」と出てきた人の、フルネームを入れてください。解除すると、次にQRで使った端末にひも付きます。</p>
-      <div class="form-row" style="margin-bottom:12px;">
-        <input type="text" id="bind-release-name" placeholder="名簿の名前（フルネーム）" style="flex:1;">
-        <button class="btn" onclick="releaseBinding()" style="white-space:nowrap;">解除する</button>
-      </div>
-      <button type="button" class="btn" style="width:100%;" onclick="closeQrBindModal()">閉じる</button>
-    </div>
-  </div>
-
   <div id="password-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; padding:16px;">
     <div class="modal-box" style="max-width:360px;">
       <p class="modal-title">まる練 ログイン</p>
@@ -1087,7 +1074,6 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
       <button class="back-btn" style="margin-bottom:0;" onclick="openView('home')">← トップ</button>
       <div style="display:flex; gap:8px;">
-        <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="openQrBindModal()"><svg class="ic"><use href="#i-qr"/></svg> QR</button>
         <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="startDemoMode()"><svg class="ic"><use href="#i-flask"/></svg> お試し</button>
         <button class="btn" style="padding:8px 14px; font-size:0.85rem; white-space:nowrap;" onclick="refreshAdminData()">更新</button>
       </div>
@@ -2611,7 +2597,6 @@
                 google.script.run
                   .withSuccessHandler(r => {
                     if (r && r.ok && r.member) { globalMembers = [r.member]; loadMemberState(mine, () => renderHomeMyCard()); }
-                    else if (r && r.reason === 'bound') showLineGuide(r.message);
                     renderHomeMyCard();
                   })
                   .withFailureHandler(() => {})
@@ -3142,7 +3127,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '…'; }
       const done = () => { if (btn) { btn.disabled = false; btn.textContent = '探す'; } };
       const showLocked = (msg) => {
-        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '3回見つからなかったので、しばらく使えません。10分ほど待ってから、もう一度お試しください。') + '</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p><p style="margin:8px 0 0; font-size:0.7rem; color:var(--text-muted); word-break:break-all;">' + esc(wttsDiag()) + '</p></div>';
+        container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);"><p style="margin:0; font-weight:600; color:#fca5a5; line-height:1.6;">' + esc(msg || '何回も見つからなかったので、しばらく使えません。時間をおいて、もう一度お試しください。') + '</p><p style="margin:10px 0 0; font-size:0.85rem; font-weight:700; color:#facc15; line-height:1.6;"><svg class="ic"><use href="#i-alert"/></svg> うまくいかないときは、LINEの練習案内のリンクから出欠を登録してください。</p><p style="margin:8px 0 0; font-size:0.7rem; color:var(--text-muted); word-break:break-all;">' + esc(wttsDiag()) + '</p></div>';
       };
       google.script.run
         .withSuccessHandler(r => {
@@ -3154,8 +3139,7 @@
             renderMemberButton(container, r.member);
           } else if (r && r.reason === 'locked') {
             showLocked(r.message);
-          } else if (r && r.reason === 'bound') {
-            showLocked(r.message);
+
           } else {
             const left = r && typeof r.left === 'number' ? r.left : 0;
             container.innerHTML = '<div style="text-align:center; padding:16px; background:var(--red-soft); border-radius:var(--radius); border:1px solid rgba(239,68,68,0.2);">'
@@ -3166,21 +3150,9 @@
         .withFailureHandler(err => {
           done();
           const msg = (err && err.message) ? err.message : '照会に失敗しました';
-          if (/3回|集中/.test(msg)) showLocked(msg); else showToast(msg, true);
+          if (/回間違え|集中/.test(msg)) showLocked(msg); else showToast(msg, true);
         })
         .lookupMember(q);
-    }
-
-    function openQrBindModal() { document.getElementById('qr-bind-modal').style.display = 'flex'; setTimeout(() => { const e = document.getElementById('bind-release-name'); if (e) e.focus(); }, 50); }
-    function closeQrBindModal() { document.getElementById('qr-bind-modal').style.display = 'none'; }
-    function releaseBinding() {
-      const el = document.getElementById('bind-release-name');
-      const name = (el.value || '').trim();
-      if (!name) { showToast('名前を入力してください', true); return; }
-      google.script.run
-        .withSuccessHandler(had => { showToast(had ? name + ' さんのひも付けを解除しました' : name + ' さんは、ひも付けされていませんでした'); el.value = ''; })
-        .withFailureHandler(handleAdminError)
-        .releaseDeviceBinding(admTok(), name);
     }
 
     function filterPMembers(ev) {
@@ -3349,7 +3321,7 @@
               finishSuccess();
             })
             .withFailureHandler((err) => {
-              if (err && /LINE|3回|集中/.test(err.message || '')) {
+              if (err && /LINE|回間違え|集中/.test(err.message || '')) {
                 // 別の端末で使われている名前・照会の締め出し：再試行しても通らないので、理由を見せる
                 btnAttend.disabled = false; btnLate.disabled = false; btnCancel.disabled = false;
                 btnAttend.textContent = origAttend; btnLate.textContent = origLate; btnCancel.textContent = origCancel;
@@ -3441,7 +3413,7 @@
       const failureHandler = (err) => {
         btn1.disabled = false; btn2.disabled = false;
         btn1.textContent = originalText1; btn2.textContent = originalText2;
-        if (err && err.message && /LINE|3回|集中|すでに名簿/.test(err.message)) showLineGuide(err.message);
+        if (err && err.message && /LINE|回間違え|集中|すでに名簿/.test(err.message)) showLineGuide(err.message);
         else showToast('登録に失敗しました', true);
       };
 
