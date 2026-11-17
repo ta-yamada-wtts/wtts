@@ -2849,7 +2849,7 @@
             `${info.createdLabel} に作成した ${info.teamCount} チーム分が未記録です。記録すると、その日の参加として連続記録に反映されます。`;
           banner.style.display = 'block';
         })
-        .getUnsavedTeamsInfo();
+        .getUnsavedTeamsInfo(admTok());
     }
 
     function dismissUnsavedBanner() {
