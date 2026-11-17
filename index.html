@@ -970,7 +970,7 @@
   <div id="qr-bind-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; padding:16px;" onclick="if(event.target===this)closeQrBindModal()">
     <div class="modal-box" style="max-width:360px;">
       <p class="modal-title">QRの端末のひも付け</p>
-      <p class="hint-text" style="margin-bottom:10px;">QRから使った名前は、最初の端末だけが使えます。機種変更などで本人が使えなくなったときに、名簿の名前を入れて解除します。解除すると、次に使った端末にひも付きます。</p>
+      <p class="hint-text" style="margin-bottom:10px;">QRを読み込んで「別の端末で使われています。」と出てきた人の、フルネームを入れてください。解除すると、次にQRで使った端末にひも付きます。</p>
       <div class="form-row" style="margin-bottom:12px;">
         <input type="text" id="bind-release-name" placeholder="名簿の名前（フルネーム）" style="flex:1;">
         <button class="btn" onclick="releaseBinding()" style="white-space:nowrap;">解除する</button>
