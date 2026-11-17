@@ -1557,7 +1557,7 @@
       })();
     }
     const serverInitialUser = new URLSearchParams(location.search).get('u') || '';
-    const serverInitialView = new URLSearchParams(location.search).get('v') === 'p' ? 'p' : '';
+    const serverInitialView = (new URLSearchParams(location.search).get('v') === 'p' && !(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches))) ? 'p' : '';
     const serverAppUrl = location.origin + location.pathname.replace(/index.html$/, '');
     // お試しモード中は、サーバー（スプシ）に何も送らない・何も読まない。画面だけで動く（終了すると読み込み直す）
     let DEMO_MODE = false;
