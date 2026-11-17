@@ -1767,7 +1767,8 @@
       const place = placeDetails[selectedPlaceKey] || placeDetails['bunkyo-sp'];
 
       const memberKey = adminMemberKey || WTTS_KEY || '';
-      const liffUrl = 'https://liff.line.me/2011458452-SJBmfAEw' + (memberKey ? '?k=' + memberKey : '');
+      // LIFFのリンクは、プレビューの文章・画像をLINEが固定で出し、鍵の受け渡しも複雑になるので、画面へ直接のリンクにする（プレビューは画面側の説明文・アイコンが使われる）
+      const liffUrl = 'https://ta-yamada-wtts.github.io/wtts/' + (memberKey ? '?k=' + memberKey : '');
       if (!memberKey) showToast('メンバー用の鍵を取得できていないため、鍵なしのリンクになります。管理者として入り直してください', true);
 
       let msg = '🏓【練習案内】\n\n';
