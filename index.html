@@ -877,6 +877,8 @@
 
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    /* QRから入った人（?v=p）は、出欠の画面だけを使う。トップへ戻る出口は出さない */
+    body.qr-mode #participant-view .back-btn { display: none; }
   </style>
 </head>
 <body>
@@ -2550,6 +2552,7 @@
         if (localNotice) renderNextPracticeNotice(localNotice);
       } catch (e) {}
 
+      if (serverInitialView === 'p') document.body.classList.add('qr-mode');
       wttsLiffPrepare().then(fetchMembers);
     });
 
@@ -3255,7 +3258,7 @@
       const subEl = document.getElementById('success-msg-sub');
 
       if (titleEl) titleEl.textContent = title || '登録しました';
-      if (subEl) subEl.textContent = sub || 'トップ画面に戻ります...';
+      if (subEl) subEl.textContent = sub || (document.body.classList.contains('qr-mode') ? '' : 'トップ画面に戻ります...');
 
       // アイコンのアニメーションをリセットして再生
       const iconWrap = document.getElementById('success-icon-wrap');
@@ -3269,7 +3272,7 @@
 
       setTimeout(() => {
         overlay.classList.remove('show');
-        openView('home');
+        openView(document.body.classList.contains('qr-mode') ? 'participant' : 'home');   // QRから入った人は、出欠の画面に留まる
       }, delay);
     }
 
