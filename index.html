@@ -955,6 +955,9 @@
       .home-btn:active, .home-btn-sm:active, .btn:active, .btn-primary:active, .home-quick-btn:active, .name-select-btn:active, .member-item:active { transform: none; }
       .success-box { transform: none !important; }
       .badge-new { animation: none; }
+      /* 読み込み中の表示（ぐるぐる）は、動いていることを伝える大事な合図なので、止めない */
+      .spinner { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; }
+      #player-status-loading div { animation-duration: 1.4s !important; animation-iteration-count: infinite !important; }
     }
     @media (prefers-reduced-transparency: reduce) {
       .modal-overlay.flex, .success-overlay, .success-overlay.show { -webkit-backdrop-filter: none; backdrop-filter: none; }
