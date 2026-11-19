@@ -2583,9 +2583,10 @@
         }, 12000);
 
         google.script.run
-          .withSuccessHandler((members) => {
+          .withSuccessHandler((res) => {
             clearTimeout(timeoutId);
-            globalMembers = members;
+            res = res || {};
+            globalMembers = Array.isArray(res.members) ? res.members : [];
             document.getElementById('loading').style.display = 'none';
             requestAnimationFrame(() => {
               openView('home');
@@ -2593,37 +2594,33 @@
               if (serverInitialView === 'p') openView('participant');   // QRから開いたときは、出欠入力画面へ
               const mine = getSavedMemberName();
               if (mine && isPublicMode()) {
-                // 鍵なし：保存した名前を、1回だけ照会して自分の行を作る（見つからなければ保存を無視）
-                google.script.run
-                  .withSuccessHandler(r => {
-                    if (r && r.ok && r.member) { globalMembers = [r.member]; loadMemberState(mine, () => renderHomeMyCard()); }
-                    renderHomeMyCard();
-                  })
-                  .withFailureHandler(() => {})
-                  .lookupMember(mine);
-              } else if (mine) loadMemberState(mine, () => renderHomeMyCard());
+                // 鍵なし：保存した名前を、サーバーが照会した結果（1人分）で自分の行を作る（見つからなければ保存を無視）
+                const r = res.lookup;
+                if (r && r.ok && r.member) {
+                  globalMembers = [r.member];
+                  if (res.state && res.state.name === r.member.name) Object.assign(globalMembers[0], res.state);
+                }
+                renderHomeMyCard();
+              } else if (mine && res.state) {
+                const m = (globalMembers || []).find(x => x.name === res.state.name);
+                if (m) Object.assign(m, res.state);
+                renderHomeMyCard();
+              }
             });
 
-            // チーム情報メタの取得
-            google.script.run
-              .withSuccessHandler((info) => {
-                if (info) checkPublishedTeamsNewBadge(info);
-              })
-              .getPublishedTeamsInfo();
+            // チーム情報メタ
+            if (res.teamsInfo) checkPublishedTeamsNewBadge(res.teamsInfo);
 
-            // 練習案内メタの取得
-            google.script.run
-              .withSuccessHandler((notice) => {
-                if (notice) {
-                  renderNextPracticeNotice(notice);
-                  try { localStorage.setItem('wtts_next_practice_notice', JSON.stringify(notice)); } catch (e) {}
-                } else {
-                  // サーバー側で期限切れ・取り消しになった案内は、この端末の保存分も消す
-                  renderNextPracticeNotice(null);
-                  try { localStorage.removeItem('wtts_next_practice_notice'); } catch (e) {}
-                }
-              })
-              .getPracticeNotice();
+            // 練習案内メタ
+            const notice = res.notice;
+            if (notice) {
+              renderNextPracticeNotice(notice);
+              try { localStorage.setItem('wtts_next_practice_notice', JSON.stringify(notice)); } catch (e) {}
+            } else {
+              // サーバー側で期限切れ・取り消しになった案内は、この端末の保存分も消す
+              renderNextPracticeNotice(null);
+              try { localStorage.removeItem('wtts_next_practice_notice'); } catch (e) {}
+            }
           })
           .withFailureHandler((err) => {
             clearTimeout(timeoutId);
@@ -2636,7 +2633,7 @@
             }
             console.error(err);
           })
-          .getMembers(false, admTok());
+          .getStartup(admTok(), WTTS_KEY, getSavedMemberName() || '', WTTS_DEVICE);   // 名簿・チーム有無・練習案内・自分の状態を、1回の通信で
       };
 
       if (hasServer() && google.script) {
