@@ -13,7 +13,7 @@
   <meta property="og:image" content="https://ta-yamada-wtts.github.io/wtts/icon-512.png">
   <meta name="twitter:card" content="summary">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>wtts出欠</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -886,6 +886,83 @@
     @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     /* QRから入った人（?v=p）は、出欠の画面だけを使う。トップへ戻る出口は出さない */
     body.qr-mode #participant-view .back-btn { display: none; }
+
+    /* ════════════════════════════════════════════════════════════
+       手触りの仕上げ（Apple の「Designing Fluid Interfaces」の考え方）
+       ・押した瞬間に反応し、離すとやわらかく戻る  ・画面は連続して現れる  ・押しやすい大きさ
+       ・文字は大きさに合わせた詰め方  ・動きを減らす設定を尊重する
+       ════════════════════════════════════════════════════════════ */
+    html { color-scheme: dark; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body {
+      /* 端末の標準フォント（iPhone なら ヒラギノ／SF）を優先する */
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-bottom: calc(80px + env(safe-area-inset-bottom));
+      padding-left: max(15px, env(safe-area-inset-left));
+      padding-right: max(15px, env(safe-area-inset-right));
+    }
+    /* 小さな文字は、ほんの少し広げて読みやすく／大きな見出しは詰める */
+    .app-header-subtitle, .home-btn-sub, .card-title { letter-spacing: 0.03em; }
+    h1 { letter-spacing: -0.01em; line-height: 1.2; }
+
+    /* 触るものは、遅れなく反応させる（ダブルタップ待ちをなくす） */
+    button, a, [onclick], .home-btn, .home-btn-sm, .name-select-btn, .member-item, .home-quick-btn, .stepper-btn, .autocomplete-item {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+    button { user-select: none; -webkit-user-select: none; font-family: inherit; }
+
+    /* 押した瞬間にへこみ（速く）、離すとやわらかく戻る（遅く）。弾ませない */
+    .home-btn, .home-btn-sm, .btn, .btn-primary, .btn-success, .btn-warning, .btn-danger-outline,
+    .name-select-btn, .member-item, .home-quick-btn, .stepper-btn, .back-btn {
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    }
+    .home-btn:active, .home-btn-sm:active, .btn:active, .btn-primary:active, .btn-success:active, .btn-warning:active,
+    .btn-danger-outline:active, .home-quick-btn:active, .stepper-btn:active {
+      transform: scale(0.97);
+      transition-duration: 0.07s, 0.15s, 0.15s, 0.15s, 0.15s, 0.15s;
+    }
+    .name-select-btn:active, .member-item:active { transform: scale(0.985); transition-duration: 0.07s, 0.12s, 0.12s, 0.15s, 0.15s, 0.15s; }
+    .btn:disabled:active, .btn-primary:disabled:active { transform: none; }
+
+    /* 指の位置（44pt）の目安：見た目は変えず、押せる範囲だけ広げる */
+    .stepper-btn { position: relative; }
+    .stepper-btn::after { content: ''; position: absolute; inset: -4px; }
+    .back-btn { padding: 12px 16px 12px 0; margin: -12px 0 4px; }
+
+    /* キーボード操作のとき、いまどこかが分かるように */
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
+
+    /* 画面は、ぱっと切り替わらず、下からそっと現れる（つながりが見える） */
+    @keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .view-section.active { animation: viewIn 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+
+    /* ダイアログは、背景をぼかして奥へ押しやり、本体が手前にせり出す */
+    @keyframes sheetIn { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+    .modal-overlay.flex { background: rgba(0, 0, 0, 0.55); -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); animation: fadeIn 0.2s ease-out; }
+    .modal-overlay.flex .modal-box { animation: sheetIn 0.34s cubic-bezier(0.22, 1, 0.36, 1); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+    /* 完了の表示：ぼかしも一緒に現れる。跳ねすぎない */
+    .success-overlay { -webkit-backdrop-filter: blur(0); backdrop-filter: blur(0); transition: opacity 0.22s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease; }
+    .success-overlay.show { -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    .success-box { transition: transform 0.34s cubic-bezier(0.22, 1.25, 0.36, 1); }
+
+    /* 設定を尊重する：動きを減らす／透明を減らす／コントラストを上げる */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+      .view-section.active, .modal-overlay.flex .modal-box { animation: fadeIn 0.15s ease-out !important; }
+      .home-btn:active, .home-btn-sm:active, .btn:active, .btn-primary:active, .home-quick-btn:active, .name-select-btn:active, .member-item:active { transform: none; }
+      .success-box { transform: none !important; }
+      .badge-new { animation: none; }
+    }
+    @media (prefers-reduced-transparency: reduce) {
+      .modal-overlay.flex, .success-overlay, .success-overlay.show { -webkit-backdrop-filter: none; backdrop-filter: none; }
+      .modal-overlay.flex { background: rgba(0, 0, 0, 0.82); }
+    }
+    @media (prefers-contrast: more) {
+      :root { --border: rgba(255,255,255,0.28); --border-mid: rgba(255,255,255,0.4); --text-muted: #94a3b8; }
+    }
   </style>
 </head>
 <body>
@@ -1546,6 +1623,8 @@
     const serverInitialView = (new URLSearchParams(location.search).get('v') === 'p' && !(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches))) ? 'p' : '';
     const serverAppUrl = location.origin + location.pathname.replace(/index.html$/, '');
     // お試しモード中は、サーバー（スプシ）に何も送らない・何も読まない。画面だけで動く（終了すると読み込み直す）
+    // iPhone の Safari は、これがないと「押している間」の見た目（:active）が遅れる
+    try { document.addEventListener('touchstart', function () {}, { passive: true }); } catch (e) {}
     let DEMO_MODE = false;
     function ic(n) { return '<svg class="ic"><use href="#i-' + n + '"/></svg>'; } // 線画のアイコン
     function hasServer() { return typeof google !== 'undefined' && !DEMO_MODE; }
@@ -3246,6 +3325,7 @@
       }
 
       overlay.classList.add('show');
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}   // 完了の瞬間だけ、軽く震える（対応端末のみ）
 
       setTimeout(() => {
         overlay.classList.remove('show');
